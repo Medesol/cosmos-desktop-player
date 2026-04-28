@@ -1,0 +1,4 @@
+.git
+.server.pid
+node_modules
+npm-debug.log

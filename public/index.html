@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小宇宙桌面播放器</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">xy</span>
+          <div>
+            <h1>小宇宙桌面播放器</h1>
+            <p>第三方网页端</p>
+          </div>
+        </div>
+        <form class="search" id="searchForm">
+          <input
+            id="searchInput"
+            name="q"
+            autocomplete="off"
+            placeholder="搜索节目 / 粘贴小宇宙链接"
+            value="马刺进步报告"
+          />
+          <button type="submit" class="primary">搜索</button>
+        </form>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <div class="section-title">
+            <span>节目</span>
+            <span id="resultCount">0</span>
+          </div>
+          <div id="results" class="results"></div>
+        </aside>
+
+        <section class="content">
+          <div id="showPanel" class="show-panel empty">
+            <div class="cover placeholder"></div>
+            <div class="show-copy">
+              <div class="skeleton title"></div>
+              <div class="skeleton line"></div>
+              <div class="skeleton line short"></div>
+            </div>
+          </div>
+
+          <div class="episode-toolbar">
+            <div class="section-title">
+              <span>单集</span>
+              <span id="episodeCount">0</span>
+            </div>
+            <input id="episodeFilter" class="episode-filter" autocomplete="off" placeholder="筛选单集" />
+          </div>
+
+          <div id="episodes" class="episodes"></div>
+        </section>
+      </main>
+
+      <footer class="player" id="player">
+        <audio id="audio" preload="metadata"></audio>
+        <img id="playerCover" alt="" class="player-cover" />
+        <div class="now">
+          <div id="nowTitle" class="now-title">还没有播放内容</div>
+          <div id="nowMeta" class="now-meta">选择一集开始</div>
+        </div>
+        <div class="transport">
+          <div class="buttons">
+            <button id="prevBtn" class="icon" aria-label="上一集" title="上一集">⏮</button>
+            <button id="backBtn" class="icon" aria-label="后退 15 秒" title="后退 15 秒">↶15</button>
+            <button id="playBtn" class="play" aria-label="播放" title="播放">▶</button>
+            <button id="forwardBtn" class="icon" aria-label="前进 15 秒" title="前进 15 秒">15↷</button>
+            <button id="nextBtn" class="icon" aria-label="下一集" title="下一集">⏭</button>
+          </div>
+          <div class="timeline">
+            <span id="currentTime">0:00</span>
+            <input id="seek" type="range" min="0" max="1000" value="0" />
+            <span id="duration">0:00</span>
+          </div>
+        </div>
+        <div class="player-tools">
+          <label class="volume">
+            <span>音量</span>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.9" />
+          </label>
+          <select id="rate" title="播放速度">
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+          <label class="toggle">
+            <input id="autoplay" type="checkbox" checked />
+            <span>连播</span>
+          </label>
+          <a id="officialLink" class="ghost" href="https://www.xiaoyuzhoufm.com" target="_blank" rel="noreferrer">官网</a>
+        </div>
+      </footer>
+    </div>
+
+    <div id="toast" class="toast" role="status"></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
