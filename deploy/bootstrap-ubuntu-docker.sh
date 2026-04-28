@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/cosmos-desktop-player}"
 REPO_URL="${REPO_URL:-https://github.com/Medesol/cosmos-desktop-player.git}"
+SERVER_NAME="${SERVER_NAME:-_}"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Please run as root or with sudo."
@@ -37,12 +38,34 @@ fi
 
 docker compose -f "$APP_DIR/deploy/docker-compose.yml" up -d --build
 
+rm -f /etc/nginx/sites-enabled/default
+cat > /etc/nginx/conf.d/cosmos-desktop-player.conf <<EOF
+server {
+  listen 80 default_server;
+  listen [::]:80 default_server;
+  server_name ${SERVER_NAME};
+
+  location / {
+    proxy_pass http://127.0.0.1:5173;
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_read_timeout 120s;
+  }
+}
+EOF
+
+nginx -t
+systemctl enable nginx
+systemctl reload nginx || systemctl restart nginx
+
 cat <<EOF
-App is running behind localhost:5173.
+App is running at http://<server-public-ip>/.
 
 Next:
-1. Point your domain A record to this server.
-2. Copy deploy/nginx.conf.example to /etc/nginx/conf.d/cosmos-desktop-player.conf.
-3. Replace example.com with your ICP-filed domain.
-4. Run: nginx -t && systemctl reload nginx
+1. Open http://your-server-public-ip/ to verify the app.
+2. After ICP filing, point your domain A record to this server.
+3. Re-run this script with SERVER_NAME=your-domain.com or edit /etc/nginx/conf.d/cosmos-desktop-player.conf.
 EOF

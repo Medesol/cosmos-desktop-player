@@ -59,7 +59,17 @@ REPO_URL=https://github.com/Medesol/cosmos-desktop-player.git \
 bash <(curl -fsSL https://raw.githubusercontent.com/Medesol/cosmos-desktop-player/main/deploy/bootstrap-ubuntu-docker.sh)
 ```
 
-如果使用腾讯云 Docker CE 应用模板，Docker 已预装；脚本会跳过 Docker 安装，仅安装/确认 Git 和 Nginx。
+如果使用腾讯云 Docker CE 应用模板，Docker 已预装；脚本会跳过 Docker 安装，仅安装/确认 Git 和 Nginx。脚本会自动配置 Nginx，让服务器公网 IP 的 80 端口直接反代到应用。
+
+域名备案并解析完成后，可以用域名重新配置：
+
+```bash
+sudo -i
+SERVER_NAME=example.com \
+APP_DIR=/opt/cosmos-desktop-player \
+REPO_URL=https://github.com/Medesol/cosmos-desktop-player.git \
+bash <(curl -fsSL https://raw.githubusercontent.com/Medesol/cosmos-desktop-player/main/deploy/bootstrap-ubuntu-docker.sh)
+```
 
 如果服务器访问 GitHub 不稳定，可以改用本地打包上传：
 
