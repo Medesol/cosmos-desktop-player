@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { createReadStream, existsSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { Readable } from "node:stream";
+import { publicConfigFromEnv } from "./config.js";
 import {
   fetchEpisodeById,
   fetchPodcastById,
@@ -23,6 +24,10 @@ const TYPES = {
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   try {
+    if (url.pathname === "/api/config") {
+      return json(response, publicConfigFromEnv());
+    }
+
     if (url.pathname === "/api/search") {
       return json(response, await searchPodcasts(url.searchParams.get("q")));
     }

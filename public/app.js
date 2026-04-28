@@ -32,6 +32,8 @@ const els = {
   rate: document.querySelector("#rate"),
   autoplay: document.querySelector("#autoplay"),
   official: document.querySelector("#officialLink"),
+  icp: document.querySelector("#icpLink"),
+  securityRecord: document.querySelector("#securityRecordLink"),
   toast: document.querySelector("#toast")
 };
 
@@ -103,6 +105,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 restoreSettings();
+loadPublicConfig();
 search(els.input.value);
 
 async function search(query) {
@@ -273,6 +276,23 @@ async function api(path) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "请求失败");
   return data;
+}
+
+async function loadPublicConfig() {
+  try {
+    const config = await api("/api/config");
+    setOptionalLink(els.icp, config.icpText, config.icpUrl);
+    setOptionalLink(els.securityRecord, config.securityRecordText, config.securityRecordUrl);
+  } catch {
+    // Compliance links are optional and should not block the player.
+  }
+}
+
+function setOptionalLink(element, text, href) {
+  if (!text) return;
+  element.textContent = text;
+  element.href = href || "#";
+  element.hidden = false;
 }
 
 function restoreSettings() {

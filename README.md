@@ -51,9 +51,21 @@ http://服务器IP:5173
 
 生产环境建议放在 Nginx/Caddy 后面，并配置 HTTPS。
 
+## 中国大陆部署
+
+面向中国大陆用户，推荐部署到腾讯云轻量应用服务器或阿里云 ECS，并使用 Docker + Nginx。详见：
+
+```text
+docs/mainland-deploy.md
+```
+
 ## 环境变量
 
 - `PORT`：服务监听端口，默认 `5173`
+- `PUBLIC_ICP_TEXT`：ICP 备案号，可留空
+- `PUBLIC_ICP_URL`：ICP 备案链接，默认 `https://beian.miit.gov.cn/`
+- `PUBLIC_SECURITY_RECORD_TEXT`：公安联网备案号，可留空
+- `PUBLIC_SECURITY_RECORD_URL`：公安联网备案详情链接，可留空
 
 ## 当前限制
 

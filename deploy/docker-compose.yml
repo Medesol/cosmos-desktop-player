@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: cosmos-desktop-player:latest
+    container_name: cosmos-desktop-player
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5173
+      PUBLIC_ICP_TEXT: ""
+      PUBLIC_ICP_URL: "https://beian.miit.gov.cn/"
+      PUBLIC_SECURITY_RECORD_TEXT: ""
+      PUBLIC_SECURITY_RECORD_URL: ""
+    ports:
+      - "127.0.0.1:5173:5173"

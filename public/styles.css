@@ -396,6 +396,10 @@ a {
   font-size: 12px;
 }
 
+.compliance-link[hidden] {
+  display: none;
+}
+
 .episode-empty {
   display: grid;
   place-items: center;

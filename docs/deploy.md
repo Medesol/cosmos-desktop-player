@@ -26,6 +26,10 @@ server {
 }
 ```
 
-## Render/Fly/Railway 等平台
+## 腾讯云/阿里云
 
-选择 Docker 部署，暴露 `PORT=5173` 即可。平台如果会自动注入 `PORT`，应用也会读取对应环境变量。
+面向中国大陆用户，优先选择腾讯云轻量应用服务器或阿里云 ECS。详见：
+
+```text
+docs/mainland-deploy.md
+```
