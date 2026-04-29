@@ -86,7 +86,7 @@ els.audio.addEventListener("ended", () => {
   if (els.autoplay.checked) playRelative(1);
 });
 els.audio.addEventListener("error", () => {
-  showToast("音频加载失败，已切换本地代理。");
+  showToast("音频加载失败，已尝试通过本地代理播放。");
   const current = state.episodes[state.currentIndex];
   if (current && !els.audio.src.includes("/api/media")) {
     els.audio.src = proxyUrl(current.audioUrl);
@@ -118,7 +118,7 @@ async function search(query) {
       selectShow(state.results[0]);
     } else {
       clearShow();
-      showToast("没搜到节目，试试直接粘贴小宇宙节目链接。");
+      showToast("没有找到相关节目。可以换个关键词，或直接粘贴小宇宙节目链接。");
     }
   } catch (error) {
     showToast(error.message);
@@ -155,7 +155,7 @@ function renderResults() {
       <img src="${escapeAttr(podcast.coverUrl)}" alt="" />
       <span>
         <strong>${escapeHtml(podcast.title)}</strong>
-        <small>${escapeHtml(podcast.author || podcast.brief || "小宇宙节目")}</small>
+        <small>${escapeHtml(podcast.author || podcast.brief || "公开节目")}</small>
       </span>
     `;
     button.addEventListener("click", () => selectShow(result));
@@ -184,7 +184,7 @@ function renderShow() {
     <div class="show-copy">
       <h2>${escapeHtml(show.title)}</h2>
       <div class="show-meta">
-        <span>${escapeHtml(show.author || "佚名")}</span>
+        <span>${escapeHtml(show.author || "未标注作者")}</span>
         <span>${show.subscriptionCount ? `${formatNumber(show.subscriptionCount)} 订阅` : "公开节目"}</span>
         <span>${show.episodeCount ? `${show.episodeCount} 集` : `${state.episodes.length} 集`}</span>
       </div>
@@ -205,7 +205,7 @@ function renderEpisodes() {
   if (!state.filteredEpisodes.length) {
     const empty = document.createElement("div");
     empty.className = "episode-empty";
-    empty.textContent = state.show ? "没有匹配的单集" : "搜索节目后会显示单集";
+    empty.textContent = state.show ? "没有匹配的单集" : "搜索节目后将显示公开单集";
     els.episodes.append(empty);
     return;
   }
@@ -221,7 +221,7 @@ function renderEpisodes() {
         <h3>${escapeHtml(episode.title)}</h3>
         <p>${formatDate(episode.pubDate)} · ${formatTime(episode.duration)}${episode.playCount ? ` · ${formatNumber(episode.playCount)} 播放` : ""}</p>
       </div>
-      <a class="episode-link" href="${escapeAttr(episode.sourceUrl)}" target="_blank" rel="noreferrer">官网</a>
+      <a class="episode-link" href="${escapeAttr(episode.sourceUrl)}" target="_blank" rel="noreferrer">原站</a>
     `;
     row.querySelector(".episode-play").addEventListener("click", () => playEpisode(index));
     row.addEventListener("dblclick", () => playEpisode(index));
@@ -245,7 +245,7 @@ function playEpisode(index) {
     JSON.stringify({ showId: state.show?.id, episodeId: episode.id, title: episode.title })
   );
   renderEpisodes();
-  els.audio.play().catch(() => showToast("浏览器拦截了自动播放，再点一次播放键。"));
+  els.audio.play().catch(() => showToast("浏览器阻止了自动播放，请再次点击播放。"));
 }
 
 function playRelative(offset) {
@@ -274,7 +274,7 @@ function updateTimeline() {
 async function api(path) {
   const response = await fetch(path);
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "请求失败");
+  if (!response.ok) throw new Error(data.error || "请求未成功，请稍后重试。");
   return data;
 }
 
