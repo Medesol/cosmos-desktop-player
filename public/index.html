@@ -3,59 +3,233 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>小宇宙桌面播放器</title>
+    <meta
+      name="description"
+      content="搜索小宇宙公开博客与播客节目，浏览节目资料、筛选单集并在网页端连续播放。"
+    />
+    <title>小宇宙公开博客与播客搜索</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="grain" aria-hidden="true"></div>
     <div class="shell">
       <header class="topbar">
-        <div class="brand">
+        <a class="brand" href="#top" aria-label="回到首页">
           <span class="brand-mark">xy</span>
-          <div>
-            <h1>小宇宙桌面播放器</h1>
-            <p>第三方网页端</p>
-          </div>
-        </div>
-        <form class="search" id="searchForm">
-          <input
-            id="searchInput"
-            name="q"
-            autocomplete="off"
-            placeholder="搜索节目 / 粘贴小宇宙链接"
-            value="马刺进步报告"
-          />
-          <button type="submit" class="primary">搜索</button>
-        </form>
+          <span>
+            <strong>小宇宙公开搜索</strong>
+            <small>博客与播客播放器</small>
+          </span>
+        </a>
+        <nav class="topnav" aria-label="页面导航">
+          <a href="#library">发现节目</a>
+          <a href="#player">连续播放</a>
+          <a href="https://www.xiaoyuzhoufm.com" target="_blank" rel="noreferrer">打开小宇宙</a>
+        </nav>
       </header>
 
-      <main class="workspace">
-        <aside class="sidebar">
-          <div class="section-title">
-            <span>节目</span>
-            <span id="resultCount">0</span>
-          </div>
-          <div id="results" class="results"></div>
-        </aside>
-
-        <section class="content">
-          <div id="showPanel" class="show-panel empty">
-            <div class="cover placeholder"></div>
-            <div class="show-copy">
-              <div class="skeleton title"></div>
-              <div class="skeleton line"></div>
-              <div class="skeleton line short"></div>
+      <main class="page">
+        <section class="hero" id="top">
+          <div class="cover-river" aria-hidden="true">
+            <div class="cover-strip strip-one">
+              <article class="cover-card cover-card-red">
+                <span>声动早咖啡</span>
+                <strong>Morning Brief</strong>
+                <small>商业与日常</small>
+              </article>
+              <article class="cover-card cover-card-blue">
+                <span>科技早知道</span>
+                <strong>Future Notes</strong>
+                <small>科技现场</small>
+              </article>
+              <article class="cover-card cover-card-cream">
+                <span>半拿铁</span>
+                <strong>Brand Stories</strong>
+                <small>商业故事</small>
+              </article>
+              <article class="cover-card cover-card-green">
+                <span>随机波动</span>
+                <strong>Culture Tide</strong>
+                <small>文化观察</small>
+              </article>
+              <article class="cover-card cover-card-black">
+                <span>忽左忽右</span>
+                <strong>History Talk</strong>
+                <small>历史切片</small>
+              </article>
+              <article class="cover-card cover-card-red">
+                <span>声动早咖啡</span>
+                <strong>Morning Brief</strong>
+                <small>商业与日常</small>
+              </article>
+              <article class="cover-card cover-card-blue">
+                <span>科技早知道</span>
+                <strong>Future Notes</strong>
+                <small>科技现场</small>
+              </article>
+              <article class="cover-card cover-card-cream">
+                <span>半拿铁</span>
+                <strong>Brand Stories</strong>
+                <small>商业故事</small>
+              </article>
+            </div>
+            <div class="cover-strip strip-two">
+              <article class="cover-card cover-card-yellow">
+                <span>展开讲讲</span>
+                <strong>Open Tabs</strong>
+                <small>影视与生活</small>
+              </article>
+              <article class="cover-card cover-card-green">
+                <span>商业就是这样</span>
+                <strong>Market Walk</strong>
+                <small>公司与市场</small>
+              </article>
+              <article class="cover-card cover-card-black">
+                <span>不合时宜</span>
+                <strong>Out of Time</strong>
+                <small>公共讨论</small>
+              </article>
+              <article class="cover-card cover-card-blue">
+                <span>日谈公园</span>
+                <strong>City Radio</strong>
+                <small>城市故事</small>
+              </article>
+              <article class="cover-card cover-card-red">
+                <span>贤者时间</span>
+                <strong>Late Reading</strong>
+                <small>读书与谈话</small>
+              </article>
+              <article class="cover-card cover-card-yellow">
+                <span>展开讲讲</span>
+                <strong>Open Tabs</strong>
+                <small>影视与生活</small>
+              </article>
+              <article class="cover-card cover-card-green">
+                <span>商业就是这样</span>
+                <strong>Market Walk</strong>
+                <small>公司与市场</small>
+              </article>
+              <article class="cover-card cover-card-black">
+                <span>不合时宜</span>
+                <strong>Out of Time</strong>
+                <small>公共讨论</small>
+              </article>
+            </div>
+            <div class="cover-strip strip-three">
+              <article class="cover-card cover-card-cream">
+                <span>马刺进步报告</span>
+                <strong>Hoop Desk</strong>
+                <small>体育博客</small>
+              </article>
+              <article class="cover-card cover-card-red">
+                <span>津津乐道</span>
+                <strong>Talk Archive</strong>
+                <small>长谈节目</small>
+              </article>
+              <article class="cover-card cover-card-blue">
+                <span>边角聊</span>
+                <strong>Side Notes</strong>
+                <small>小众观察</small>
+              </article>
+              <article class="cover-card cover-card-yellow">
+                <span>午后偏见</span>
+                <strong>Essay Hour</strong>
+                <small>个人博客</small>
+              </article>
+              <article class="cover-card cover-card-green">
+                <span>问题青年</span>
+                <strong>New Voices</strong>
+                <small>青年叙事</small>
+              </article>
+              <article class="cover-card cover-card-cream">
+                <span>马刺进步报告</span>
+                <strong>Hoop Desk</strong>
+                <small>体育博客</small>
+              </article>
+              <article class="cover-card cover-card-red">
+                <span>津津乐道</span>
+                <strong>Talk Archive</strong>
+                <small>长谈节目</small>
+              </article>
+              <article class="cover-card cover-card-blue">
+                <span>边角聊</span>
+                <strong>Side Notes</strong>
+                <small>小众观察</small>
+              </article>
             </div>
           </div>
 
-          <div class="episode-toolbar">
+          <div class="hero-grid">
+            <div class="hero-copy">
+              <p class="eyebrow">公开博客与播客搜索</p>
+              <h1>从一条搜索，打开值得听的公开节目。</h1>
+              <p class="hero-lede">
+                输入节目名、关键词，或直接粘贴小宇宙链接。我们会整理公开节目资料和最近单集，让你在桌面浏览器里顺手搜索、筛选和播放。
+              </p>
+              <form class="search hero-search" id="searchForm">
+                <label class="sr-only" for="searchInput">搜索博客或播客</label>
+                <div class="search-field">
+                  <span class="search-icon" aria-hidden="true">⌕</span>
+                  <input
+                    id="searchInput"
+                    name="q"
+                    autocomplete="off"
+                    placeholder="搜索博客、播客 / 粘贴小宇宙链接"
+                    value="马刺进步报告"
+                  />
+                </div>
+                <button type="submit" class="primary">搜索节目</button>
+              </form>
+              <div class="hero-notes" aria-label="产品特性">
+                <span>无需登录</span>
+                <span>公开网页内容</span>
+                <span>桌面连续播放</span>
+              </div>
+            </div>
+
+            <aside class="hero-card" aria-label="产品摘要">
+              <span class="card-kicker">桌面版体验</span>
+              <strong>搜索、浏览、播放，在一个页面里完成。</strong>
+              <p>适合在工作台、资料整理和长时间收听时使用：结果保持清晰，播放器常驻底部，单集可快速筛选。</p>
+              <div class="hero-meter">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="workspace" id="library" aria-label="公开节目搜索结果">
+          <aside class="sidebar">
             <div class="section-title">
-              <span>单集</span>
-              <span id="episodeCount">0</span>
+              <span>搜索结果</span>
+              <span id="resultCount">0</span>
             </div>
-            <input id="episodeFilter" class="episode-filter" autocomplete="off" placeholder="筛选单集" />
-          </div>
+            <div id="results" class="results"></div>
+          </aside>
 
-          <div id="episodes" class="episodes"></div>
+          <section class="content" aria-label="节目详情和单集">
+            <div id="showPanel" class="show-panel empty">
+              <div class="cover placeholder"></div>
+              <div class="show-copy">
+                <div class="skeleton title"></div>
+                <div class="skeleton line"></div>
+                <div class="skeleton line short"></div>
+              </div>
+            </div>
+
+            <div class="episode-toolbar">
+              <div class="section-title">
+                <span>最近单集</span>
+                <span id="episodeCount">0</span>
+              </div>
+              <input id="episodeFilter" class="episode-filter" autocomplete="off" placeholder="按标题筛选单集" />
+            </div>
+
+            <div id="episodes" class="episodes"></div>
+          </section>
         </section>
       </main>
 
@@ -63,8 +237,8 @@
         <audio id="audio" preload="metadata"></audio>
         <img id="playerCover" alt="" class="player-cover" />
         <div class="now">
-          <div id="nowTitle" class="now-title">还没有播放内容</div>
-          <div id="nowMeta" class="now-meta">选择一集开始</div>
+          <div id="nowTitle" class="now-title">尚未选择单集</div>
+          <div id="nowMeta" class="now-meta">搜索节目后开始播放</div>
         </div>
         <div class="transport">
           <div class="buttons">
@@ -96,7 +270,7 @@
             <input id="autoplay" type="checkbox" checked />
             <span>连播</span>
           </label>
-          <a id="officialLink" class="ghost" href="https://www.xiaoyuzhoufm.com" target="_blank" rel="noreferrer">官网</a>
+          <a id="officialLink" class="ghost" href="https://www.xiaoyuzhoufm.com" target="_blank" rel="noreferrer">原站打开</a>
           <a id="icpLink" class="ghost compliance-link" href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" hidden></a>
           <a id="securityRecordLink" class="ghost compliance-link" target="_blank" rel="noreferrer" hidden></a>
         </div>
