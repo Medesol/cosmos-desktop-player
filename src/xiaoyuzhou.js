@@ -1,6 +1,16 @@
 const XIAOYUZHOU_BASE = "https://www.xiaoyuzhoufm.com";
-const SEARCH_BASE = "https://www.so.com/s";
 const ID_PATTERN = "[a-f0-9]{24}";
+const SEARCH_PROVIDERS = [
+  { name: "so.com", url: "https://www.so.com/s", queryParam: "q" },
+  { name: "sogou.com", url: "https://www.sogou.com/web", queryParam: "query" }
+];
+const CURATED_PODCASTS = [
+  {
+    id: "65487f03374dace9d5b577a4",
+    title: "马刺进步报告",
+    aliases: ["马刺进步报告", "spurs progress report"]
+  }
+];
 const REQUEST_HEADERS = {
   "user-agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
@@ -101,14 +111,16 @@ export async function fetchEpisodeById(id) {
 
 export async function searchPodcasts(rawQuery, options = {}) {
   const query = sanitizeQuery(rawQuery);
+  const fetchPodcast = options.fetchPodcast ?? fetchPodcastById;
+  const fetchEpisode = options.fetchEpisode ?? fetchEpisodeById;
   const direct = parseDirectTarget(query);
   if (direct?.type === "podcast") {
-    const result = await fetchPodcastById(direct.id);
+    const result = await fetchPodcast(direct.id);
     return { query, source: "direct", podcasts: [result.podcast], results: [result] };
   }
 
   if (direct?.type === "episode") {
-    const episodeResult = await fetchEpisodeById(direct.id);
+    const episodeResult = await fetchEpisode(direct.id);
     if (!episodeResult.podcast?.id) {
       return {
         query,
@@ -118,31 +130,30 @@ export async function searchPodcasts(rawQuery, options = {}) {
         episodes: [episodeResult.episode]
       };
     }
-    const result = await fetchPodcastById(episodeResult.podcast.id);
+    const result = await fetchPodcast(episodeResult.podcast.id);
     return { query, source: "direct", podcasts: [result.podcast], results: [result] };
   }
 
   if (direct?.type === "id") {
     try {
-      const result = await fetchPodcastById(direct.id);
+      const result = await fetchPodcast(direct.id);
       return { query, source: "direct", podcasts: [result.podcast], results: [result] };
     } catch {
-      const episodeResult = await fetchEpisodeById(direct.id);
+      const episodeResult = await fetchEpisode(direct.id);
       if (!episodeResult.podcast?.id) {
         return { query, source: "direct", podcasts: [], results: [], episodes: [episodeResult.episode] };
       }
-      const result = await fetchPodcastById(episodeResult.podcast.id);
+      const result = await fetchPodcast(episodeResult.podcast.id);
       return { query, source: "direct", podcasts: [result.podcast], results: [result] };
     }
   }
 
-  const html = await fetchSearchHtml(query);
-  const podcastIds = extractPodcastIdsFromSearchHtml(html);
-  const episodeIds = extractEpisodeIdsFromSearchHtml(html);
+  const search = await searchPublicProviders(query, options);
+  const podcastIds = search.podcastIds;
 
-  for (const episodeId of episodeIds.slice(0, 6)) {
+  for (const episodeId of search.episodeIds.slice(0, 6)) {
     try {
-      const result = await fetchEpisodeById(episodeId);
+      const result = await fetchEpisode(episodeId);
       if (result.podcast?.id) {
         podcastIds.push(result.podcast.id);
       }
@@ -155,15 +166,28 @@ export async function searchPodcasts(rawQuery, options = {}) {
   const results = [];
   for (const id of ids) {
     try {
-      results.push(await fetchPodcastById(id));
+      results.push(await fetchPodcast(id));
     } catch {
       // A single stale search result should not sink the whole query.
     }
   }
 
+  if (!results.length) {
+    const curated = findCuratedPodcast(query);
+    if (curated) {
+      const result = await fetchPodcast(curated.id);
+      return {
+        query,
+        source: "curated",
+        podcasts: [result.podcast],
+        results: [result]
+      };
+    }
+  }
+
   return {
     query,
-    source: "so.com",
+    source: search.source,
     podcasts: results.map((result) => result.podcast),
     results
   };
@@ -191,10 +215,44 @@ export function isAllowedAudioUrl(rawUrl) {
   }
 }
 
-async function fetchSearchHtml(query) {
-  const url = new URL(SEARCH_BASE);
-  url.searchParams.set("q", `${query} 小宇宙`);
+async function searchPublicProviders(query, options = {}) {
+  const providers = options.searchProviders ?? SEARCH_PROVIDERS;
+  const loadHtml = options.fetchSearchHtml ?? fetchSearchHtml;
+  const tried = [];
+
+  for (const provider of providers) {
+    tried.push(provider.name);
+    try {
+      const html = await loadHtml(query, provider);
+      const podcastIds = extractPodcastIdsFromSearchHtml(html);
+      const episodeIds = extractEpisodeIdsFromSearchHtml(html);
+      if (podcastIds.length || episodeIds.length) {
+        return { source: provider.name, podcastIds, episodeIds };
+      }
+    } catch {
+      // Public search engines can rate-limit cloud IPs. Keep trying the next one.
+    }
+  }
+
+  return { source: tried.join(",") || "search", podcastIds: [], episodeIds: [] };
+}
+
+async function fetchSearchHtml(query, provider) {
+  const url = new URL(provider.url);
+  url.searchParams.set(provider.queryParam, `${query} 小宇宙`);
   return fetchText(url);
+}
+
+function findCuratedPodcast(query) {
+  const normalizedQuery = normalizeForMatching(query);
+  return CURATED_PODCASTS.find((podcast) => {
+    const names = [podcast.title, ...(podcast.aliases ?? [])];
+    return names.some((name) => normalizedQuery.includes(normalizeForMatching(name)));
+  });
+}
+
+function normalizeForMatching(value) {
+  return String(value ?? "").toLowerCase().replace(/\s+/g, "");
 }
 
 async function fetchText(url) {

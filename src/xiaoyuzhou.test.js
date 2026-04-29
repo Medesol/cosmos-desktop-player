@@ -6,8 +6,12 @@ import {
   extractPodcastIdsFromSearchHtml,
   parseEpisodePage,
   parsePodcastPage,
-  sanitizeQuery
+  sanitizeQuery,
+  searchPodcasts
 } from "./xiaoyuzhou.js";
+
+const SPURS_PODCAST_ID = "65487f03374dace9d5b577a4";
+const SPURS_EPISODE_ID = "674e414a0ed328720a110a1d";
 
 const podcastHtml = `
 <!doctype html>
@@ -66,3 +70,92 @@ test("sanitizeQuery trims, normalizes whitespace, and rejects unsafe input", () 
   assert.throws(() => sanitizeQuery("   "), /请输入/);
   assert.throws(() => sanitizeQuery("x".repeat(121)), /太长/);
 });
+
+test("searchPodcasts tries a fallback search provider when so.com has no xiaoyuzhou links", async (t) => {
+  const calls = mockFetch(t, async (url) => {
+    if (url.hostname === "www.so.com") {
+      return htmlResponse("<title>访问异常页面</title>");
+    }
+    if (url.hostname === "www.sogou.com") {
+      return htmlResponse(
+        `<a href="https://www.xiaoyuzhoufm.com/episode/${SPURS_EPISODE_ID}">马刺进步报告</a>`
+      );
+    }
+    if (url.pathname === `/episode/${SPURS_EPISODE_ID}`) {
+      return htmlResponse(searchEpisodeHtml());
+    }
+    if (url.pathname === `/podcast/${SPURS_PODCAST_ID}`) {
+      return htmlResponse(searchPodcastHtml());
+    }
+    throw new Error(`unexpected fetch ${url.href}`);
+  });
+
+  const result = await searchPodcasts("马刺进步报告");
+
+  assert.deepEqual(
+    calls.map((url) => url.hostname),
+    ["www.so.com", "www.sogou.com", "www.xiaoyuzhoufm.com", "www.xiaoyuzhoufm.com"]
+  );
+  assert.equal(result.source, "sogou.com");
+  assert.deepEqual(
+    result.podcasts.map((podcast) => podcast.id),
+    [SPURS_PODCAST_ID]
+  );
+});
+
+test("searchPodcasts falls back to the built-in default podcast when all search providers miss", async (t) => {
+  mockFetch(t, async (url) => {
+    if (url.hostname === "www.so.com" || url.hostname === "www.sogou.com") {
+      return htmlResponse("<html><title>no xiaoyuzhou links</title></html>");
+    }
+    if (url.pathname === `/podcast/${SPURS_PODCAST_ID}`) {
+      return htmlResponse(searchPodcastHtml());
+    }
+    throw new Error(`unexpected fetch ${url.href}`);
+  });
+
+  const result = await searchPodcasts("马刺进步报告");
+
+  assert.equal(result.source, "curated");
+  assert.deepEqual(
+    result.podcasts.map((podcast) => podcast.id),
+    [SPURS_PODCAST_ID]
+  );
+});
+
+function mockFetch(t, handler) {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (rawUrl) => {
+    const url = new URL(String(rawUrl));
+    calls.push(url);
+    return handler(url);
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  return calls;
+}
+
+function htmlResponse(html) {
+  return new Response(html, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" }
+  });
+}
+
+function searchPodcastHtml() {
+  return `
+<!doctype html>
+<script id="__NEXT_DATA__" type="application/json">
+{"props":{"pageProps":{"podcast":{"pid":"${SPURS_PODCAST_ID}","title":"马刺进步报告","author":"佚名","brief":"日常陪马刺进步","description":"Go Spurs Go","subscriptionCount":2146,"episodeCount":153,"image":{"picUrl":"https://image.example/show.png"},"latestEpisodePubDate":"2026-04-27T23:20:53.227Z"},"episodes":[{"type":"EPISODE","eid":"${SPURS_EPISODE_ID}","pid":"${SPURS_PODCAST_ID}","title":"S03E75","duration":5351,"pubDate":"2026-04-27T23:20:53.227Z","image":{"picUrl":"https://image.example/e75.png"},"enclosure":{"url":"https://media.example/e75.m4a"},"playCount":2000,"commentCount":8}]}}}
+</script>`;
+}
+
+function searchEpisodeHtml() {
+  return `
+<!doctype html>
+<script id="__NEXT_DATA__" type="application/json">
+{"props":{"pageProps":{"episode":{"eid":"${SPURS_EPISODE_ID}","pid":"${SPURS_PODCAST_ID}","title":"S03E75","duration":5351,"pubDate":"2026-04-27T23:20:53.227Z","enclosure":{"url":"https://media.example/e75.m4a"},"podcast":{"pid":"${SPURS_PODCAST_ID}","title":"马刺进步报告","image":{"picUrl":"https://image.example/show.png"}}}}}}
+</script>`;
+}
