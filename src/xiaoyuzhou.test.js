@@ -157,6 +157,66 @@ test("searchPodcasts caches keyword database results and clears cache after dire
   assert.equal(searches, 2);
 });
 
+test("searchPodcasts returns direct podcast result when store upsert fails", async () => {
+  const podcastStore = {
+    upsertPodcast() {
+      throw new Error("database locked");
+    }
+  };
+
+  const result = await searchPodcasts(`https://www.xiaoyuzhoufm.com/podcast/${SPURS_PODCAST_ID}`, {
+    podcastStore,
+    fetchPodcast: async () => resolvedPodcast(SPURS_PODCAST_ID)
+  });
+
+  assert.equal(result.source, "direct");
+  assert.deepEqual(result.podcasts.map((podcast) => podcast.id), [SPURS_PODCAST_ID]);
+});
+
+test("searchPodcasts does not treat bare podcast id persistence failures as podcast fetch failures", async () => {
+  let episodeFetches = 0;
+  const podcastStore = {
+    upsertPodcast() {
+      throw new Error("database locked");
+    }
+  };
+
+  const result = await searchPodcasts(SPURS_PODCAST_ID, {
+    podcastStore,
+    fetchPodcast: async () => resolvedPodcast(SPURS_PODCAST_ID),
+    fetchEpisode: async () => {
+      episodeFetches += 1;
+      return {
+        podcast: null,
+        episode: { id: SPURS_PODCAST_ID, title: "不应查询的单集" }
+      };
+    }
+  });
+
+  assert.equal(result.source, "direct");
+  assert.deepEqual(result.podcasts.map((podcast) => podcast.id), [SPURS_PODCAST_ID]);
+  assert.equal(episodeFetches, 0);
+});
+
+test("searchPodcasts returns curated result when cache clear fails after upsert", async () => {
+  const searchCache = {
+    clear() {
+      throw new Error("cache clear failed");
+    }
+  };
+
+  const result = await searchPodcasts("马刺进步报告", {
+    podcastStore: {
+      upsertPodcast() {}
+    },
+    searchCache,
+    fetchPodcast: async () => resolvedPodcast(SPURS_PODCAST_ID)
+  });
+
+  assert.equal(result.source, "curated");
+  assert.deepEqual(result.podcasts.map((podcast) => podcast.id), [SPURS_PODCAST_ID]);
+});
+
 function mockFetch(t, handler) {
   const originalFetch = globalThis.fetch;
   const calls = [];
@@ -192,4 +252,11 @@ function searchEpisodeHtml() {
 <script id="__NEXT_DATA__" type="application/json">
 {"props":{"pageProps":{"episode":{"eid":"${SPURS_EPISODE_ID}","pid":"${SPURS_PODCAST_ID}","title":"S03E75","duration":5351,"pubDate":"2026-04-27T23:20:53.227Z","enclosure":{"url":"https://media.example/e75.m4a"},"podcast":{"pid":"${SPURS_PODCAST_ID}","title":"马刺进步报告","image":{"picUrl":"https://image.example/show.png"}}}}}}
 </script>`;
+}
+
+function resolvedPodcast(id) {
+  return {
+    podcast: { id, title: "马刺进步报告", sourceUrl: `https://www.xiaoyuzhoufm.com/podcast/${id}` },
+    episodes: []
+  };
 }

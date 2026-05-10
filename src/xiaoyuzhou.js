@@ -128,19 +128,23 @@ export async function searchPodcasts(rawQuery, options = {}) {
   }
 
   if (direct?.type === "id") {
+    let podcastResult = null;
     try {
-      const result = await fetchPodcast(direct.id);
-      upsertResolvedPodcast(result, podcastStore, searchCache);
-      return { query, source: "direct", podcasts: [result.podcast], results: [result] };
+      podcastResult = await fetchPodcast(direct.id);
     } catch {
-      const episodeResult = await fetchEpisode(direct.id);
-      if (!episodeResult.podcast?.id) {
-        return { query, source: "direct", podcasts: [], results: [], episodes: [episodeResult.episode] };
-      }
-      const result = await fetchPodcast(episodeResult.podcast.id);
-      upsertResolvedPodcast(result, podcastStore, searchCache);
-      return { query, source: "direct", podcasts: [result.podcast], results: [result] };
     }
+    if (podcastResult) {
+      upsertResolvedPodcast(podcastResult, podcastStore, searchCache);
+      return { query, source: "direct", podcasts: [podcastResult.podcast], results: [podcastResult] };
+    }
+
+    const episodeResult = await fetchEpisode(direct.id);
+    if (!episodeResult.podcast?.id) {
+      return { query, source: "direct", podcasts: [], results: [], episodes: [episodeResult.episode] };
+    }
+    const result = await fetchPodcast(episodeResult.podcast.id);
+    upsertResolvedPodcast(result, podcastStore, searchCache);
+    return { query, source: "direct", podcasts: [result.podcast], results: [result] };
   }
 
   if (podcastStore?.searchPodcasts) {
@@ -220,8 +224,16 @@ function resultsFromPodcasts(podcasts) {
 
 function upsertResolvedPodcast(result, podcastStore, searchCache) {
   if (result?.podcast && podcastStore?.upsertPodcast) {
-    podcastStore.upsertPodcast(result.podcast);
-    searchCache?.clear?.();
+    try {
+      podcastStore.upsertPodcast(result.podcast);
+    } catch {
+      return;
+    }
+    try {
+      searchCache?.clear?.();
+    } catch {
+      // Cache invalidation is best-effort; resolved podcasts should still be returned.
+    }
   }
 }
 
