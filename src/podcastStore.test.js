@@ -37,15 +37,21 @@ test("normalizePodcastForStorage validates id and title", () => {
 });
 
 test("podcast store creates, gets, updates, lists, and deletes records", (t) => {
-  const store = createPodcastStore({ dbPath: tempDb(t), now: () => "2026-05-10T00:00:00.000Z" });
+  let timestamp = "2026-05-10T00:00:00.000Z";
+  const store = createPodcastStore({ dbPath: tempDb(t), now: () => timestamp });
   t.after(() => store.close());
 
-  store.upsertPodcast(basePodcast);
-  assert.equal(store.getPodcast(basePodcast.id).title, "忽左忽右");
+  const created = store.upsertPodcast(basePodcast);
+  assert.equal(created.title, "忽左忽右");
+  assert.equal(created.createdAt, "2026-05-10T00:00:00.000Z");
+  assert.equal(created.updatedAt, "2026-05-10T00:00:00.000Z");
 
-  store.upsertPodcast({ ...basePodcast, title: "忽左忽右新版", aliases: ["忽左忽右"] });
-  assert.equal(store.getPodcast(basePodcast.id).title, "忽左忽右新版");
-  assert.deepEqual(store.getPodcast(basePodcast.id).aliases, ["忽左忽右"]);
+  timestamp = "2026-05-11T00:00:00.000Z";
+  const updated = store.upsertPodcast({ ...basePodcast, title: "忽左忽右新版", aliases: ["忽左忽右"] });
+  assert.equal(updated.title, "忽左忽右新版");
+  assert.equal(updated.createdAt, "2026-05-10T00:00:00.000Z");
+  assert.equal(updated.updatedAt, "2026-05-11T00:00:00.000Z");
+  assert.deepEqual(updated.aliases, ["忽左忽右"]);
 
   assert.deepEqual(
     store.listPodcasts({ limit: 10, offset: 0 }).map((podcast) => podcast.id),
@@ -55,6 +61,22 @@ test("podcast store creates, gets, updates, lists, and deletes records", (t) => 
   assert.equal(store.deletePodcast(basePodcast.id), true);
   assert.equal(store.getPodcast(basePodcast.id), null);
   assert.equal(store.deletePodcast(basePodcast.id), false);
+});
+
+test("podcast store clamps list and search limits", (t) => {
+  const store = createPodcastStore({ dbPath: tempDb(t) });
+  t.after(() => store.close());
+
+  store.upsertPodcast(basePodcast);
+  store.upsertPodcast({
+    ...basePodcast,
+    id: "bbbbbbbbbbbbbbbbbbbbbbbb",
+    title: "故事 FM",
+    aliases: ["story"]
+  });
+
+  assert.equal(store.listPodcasts({ limit: 0 }).length, 1);
+  assert.equal(store.searchPodcasts("故事", { limit: 0 }).length, 1);
 });
 
 test("podcast store supports in-memory databases", (t) => {
@@ -84,5 +106,22 @@ test("podcast store searches title, aliases, author, and Chinese substring fallb
   assert.deepEqual(store.searchPodcasts("忽左").map((podcast) => podcast.id), [basePodcast.id]);
   assert.deepEqual(store.searchPodcasts("leftright").map((podcast) => podcast.id), [basePodcast.id]);
   assert.deepEqual(store.searchPodcasts("声动").map((podcast) => podcast.id), ["bbbbbbbbbbbbbbbbbbbbbbbb"]);
+  assert.deepEqual(store.searchPodcasts("stochastic - volatility").map((podcast) => podcast.id), ["bbbbbbbbbbbbbbbbbbbbbbbb"]);
   assert.deepEqual(store.searchPodcasts("不存在的节目").map((podcast) => podcast.id), []);
+  assert.deepEqual(store.searchPodcasts("   "), []);
+});
+
+test("podcast store refreshes aliases on update and delete", (t) => {
+  const store = createPodcastStore({ dbPath: tempDb(t) });
+  t.after(() => store.close());
+
+  store.upsertPodcast({ ...basePodcast, aliases: ["oldalias"] });
+  assert.deepEqual(store.searchPodcasts("oldalias").map((podcast) => podcast.id), [basePodcast.id]);
+
+  store.upsertPodcast({ ...basePodcast, aliases: ["newalias"] });
+  assert.deepEqual(store.searchPodcasts("oldalias").map((podcast) => podcast.id), []);
+  assert.deepEqual(store.searchPodcasts("newalias").map((podcast) => podcast.id), [basePodcast.id]);
+
+  assert.equal(store.deletePodcast(basePodcast.id), true);
+  assert.deepEqual(store.searchPodcasts("newalias").map((podcast) => podcast.id), []);
 });

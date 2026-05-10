@@ -314,8 +314,8 @@ function appendRows(results, seen, rows, maxResults) {
 }
 
 function buildFtsQuery(query) {
-  const terms = String(query ?? "").toLowerCase().trim().split(/\s+/).filter((term) => /^[\p{Letter}\p{Number}_-]+$/u.test(term));
-  return terms.length > 0 ? terms.join(" AND ") : "";
+  const terms = String(query ?? "").toLowerCase().match(/[\p{Letter}\p{Number}_]+/gu) ?? [];
+  return terms.map((term) => `"${term.replaceAll("\"", "\"\"")}"`).join(" AND ");
 }
 
 function escapeLike(value) {
