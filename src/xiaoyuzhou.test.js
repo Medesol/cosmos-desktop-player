@@ -2,13 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  extractEpisodeIdsFromSearchHtml,
-  extractPodcastIdsFromSearchHtml,
   parseEpisodePage,
   parsePodcastPage,
   sanitizeQuery,
   searchPodcasts
 } from "./xiaoyuzhou.js";
+import { createSearchCache } from "./searchCache.js";
 
 const SPURS_PODCAST_ID = "65487f03374dace9d5b577a4";
 const SPURS_EPISODE_ID = "674e414a0ed328720a110a1d";
@@ -54,36 +53,14 @@ test("parseEpisodePage prefers public enclosure data and includes podcast link",
   assert.equal(result.podcast.title, "节目名");
 });
 
-test("search html extraction deduplicates xiaoyuzhou podcast and episode ids", () => {
-  const html = `
-    <a href="https://www.xiaoyuzhoufm.com/podcast/65487f03374dace9d5b577a4">马刺进步报告</a>
-    <a href="https://www.xiaoyuzhoufm.com/podcast/65487f03374dace9d5b577a4?utm=1">duplicate</a>
-    <a href="https://www.xiaoyuzhoufm.com/episode/698e62ce66e2c30377471070">episode</a>
-  `;
-
-  assert.deepEqual(extractPodcastIdsFromSearchHtml(html), ["65487f03374dace9d5b577a4"]);
-  assert.deepEqual(extractEpisodeIdsFromSearchHtml(html), ["698e62ce66e2c30377471070"]);
-});
-
 test("sanitizeQuery trims, normalizes whitespace, and rejects unsafe input", () => {
   assert.equal(sanitizeQuery("  马刺   进步 报告  "), "马刺 进步 报告");
   assert.throws(() => sanitizeQuery("   "), /请输入/);
   assert.throws(() => sanitizeQuery("x".repeat(121)), /太长/);
 });
 
-test("searchPodcasts tries a fallback search provider when so.com has no xiaoyuzhou links", async (t) => {
+test("searchPodcasts does not call external search providers by default", async (t) => {
   const calls = mockFetch(t, async (url) => {
-    if (url.hostname === "www.so.com") {
-      return htmlResponse("<title>访问异常页面</title>");
-    }
-    if (url.hostname === "www.sogou.com") {
-      return htmlResponse(
-        `<a href="https://www.xiaoyuzhoufm.com/episode/${SPURS_EPISODE_ID}">马刺进步报告</a>`
-      );
-    }
-    if (url.pathname === `/episode/${SPURS_EPISODE_ID}`) {
-      return htmlResponse(searchEpisodeHtml());
-    }
     if (url.pathname === `/podcast/${SPURS_PODCAST_ID}`) {
       return htmlResponse(searchPodcastHtml());
     }
@@ -94,9 +71,9 @@ test("searchPodcasts tries a fallback search provider when so.com has no xiaoyuz
 
   assert.deepEqual(
     calls.map((url) => url.hostname),
-    ["www.so.com", "www.sogou.com", "www.xiaoyuzhoufm.com", "www.xiaoyuzhoufm.com"]
+    ["www.xiaoyuzhoufm.com"]
   );
-  assert.equal(result.source, "sogou.com");
+  assert.equal(result.source, "curated");
   assert.deepEqual(
     result.podcasts.map((podcast) => podcast.id),
     [SPURS_PODCAST_ID]
@@ -105,9 +82,6 @@ test("searchPodcasts tries a fallback search provider when so.com has no xiaoyuz
 
 test("searchPodcasts falls back to the built-in default podcast when all search providers miss", async (t) => {
   mockFetch(t, async (url) => {
-    if (url.hostname === "www.so.com" || url.hostname === "www.sogou.com") {
-      return htmlResponse("<html><title>no xiaoyuzhou links</title></html>");
-    }
     if (url.pathname === `/podcast/${SPURS_PODCAST_ID}`) {
       return htmlResponse(searchPodcastHtml());
     }
@@ -121,6 +95,66 @@ test("searchPodcasts falls back to the built-in default podcast when all search 
     result.podcasts.map((podcast) => podcast.id),
     [SPURS_PODCAST_ID]
   );
+});
+
+test("searchPodcasts searches the podcast store for keyword queries", async () => {
+  const podcastStore = {
+    searchPodcasts(query, options) {
+      assert.equal(query, "忽左忽右");
+      assert.equal(options.limit, 6);
+      return [
+        {
+          id: "aaaaaaaaaaaaaaaaaaaaaaaa",
+          title: "忽左忽右",
+          author: "JustPod",
+          brief: "从中文世界出发",
+          description: "",
+          coverUrl: "",
+          subscriptionCount: 1,
+          episodeCount: 2,
+          latestEpisodePubDate: "",
+          sourceUrl: "https://www.xiaoyuzhoufm.com/podcast/aaaaaaaaaaaaaaaaaaaaaaaa",
+          aliases: ["忽左"]
+        }
+      ];
+    }
+  };
+
+  const result = await searchPodcasts("忽左忽右", { podcastStore });
+
+  assert.equal(result.source, "database");
+  assert.deepEqual(result.podcasts.map((podcast) => podcast.id), ["aaaaaaaaaaaaaaaaaaaaaaaa"]);
+  assert.deepEqual(result.results.map((item) => item.episodes), [[]]);
+});
+
+test("searchPodcasts caches keyword database results and clears cache after direct upsert", async () => {
+  let searches = 0;
+  const cache = createSearchCache({ now: () => 1000 });
+  const podcastStore = {
+    searchPodcasts() {
+      searches += 1;
+      return [{ id: "aaaaaaaaaaaaaaaaaaaaaaaa", title: "忽左忽右", sourceUrl: "" }];
+    },
+    upsertPodcast() {
+      cache.clear();
+    }
+  };
+
+  await searchPodcasts("忽左忽右", { podcastStore, searchCache: cache });
+  await searchPodcasts("忽左忽右", { podcastStore, searchCache: cache });
+  assert.equal(searches, 1);
+
+  await searchPodcasts(`https://www.xiaoyuzhoufm.com/podcast/${SPURS_PODCAST_ID}`, {
+    podcastStore,
+    searchCache: cache,
+    fetchPodcast: async () => ({
+      podcast: { id: SPURS_PODCAST_ID, title: "马刺进步报告", sourceUrl: "" },
+      episodes: []
+    })
+  });
+
+  await searchPodcasts("忽左忽右", { podcastStore, searchCache: cache });
+  assert.equal(searches, 2);
 });
 
 function mockFetch(t, handler) {
