@@ -41,7 +41,7 @@ flowchart LR
   Nginx --> App["Node app :5173"]
   App --> Static["public/ static files"]
   App --> XYZ["xiaoyuzhoufm.com public pages"]
-  App --> Search["so.com search results"]
+  App --> DB["SQLite podcast directory"]
   App --> Media["media.xyzcdn.net audio"]
 ```
 
@@ -53,12 +53,15 @@ flowchart LR
 
 - 托管 `public/` 静态文件
 - 提供 `/api/search`
+- 提供 `/api/admin/podcasts` CRUD 管理接口
 - 提供 `/api/podcast/:id`
 - 提供 `/api/episode/:id`
 - 提供 `/api/media?url=...` 音频代理
 - 提供 `/api/config` 公开合规配置
 
 音频代理只允许 `https://media.xyzcdn.net/...`，避免成为开放代理。
+
+管理接口要求 `Authorization: Bearer <ADMIN_TOKEN>`。节目目录默认保存在 `data/podcasts.sqlite`，可通过 `PODCAST_DB_PATH` 覆盖。
 
 ### `src/xiaoyuzhou.js`
 
@@ -67,13 +70,35 @@ flowchart LR
 - 解析小宇宙公开节目页和单集页中的 `__NEXT_DATA__`
 - 规范化节目、单集和音频字段
 - 支持小宇宙节目链接、单集链接和 24 位 ID 直达解析
-- 通过公开搜索结果发现小宇宙节目页
+- 在注入 `podcastStore` 时，让普通关键词搜索走本地 SQLite 目录
+- 直达解析成功后，把公开节目 metadata best-effort 写回目录并清空搜索缓存
+- 保留内置 curated 节目兜底，不调用公开搜索引擎或私有 API
 
 设计边界：
 
 - 不调用需要登录态的私有 API
 - 不存储用户查询和播放行为
-- 搜索结果可能受搜索引擎结果变化影响；直接粘贴小宇宙链接是稳定兜底路径
+- 关键词搜索默认只查 SQLite 节目目录，不调用外部搜索引擎
+- 未命中目录时，直接粘贴小宇宙链接、单集链接或 24 位 ID 是稳定兜底路径
+
+### `src/podcastStore.js`
+
+职责：
+
+- 初始化 `data/podcasts.sqlite`
+- 维护 `podcasts` 表和 FTS5 索引
+- 提供节目 CRUD、upsert 和本地搜索
+- 维护中文子串搜索所需的 `searchText` 兜底字段
+
+默认路径为 `data/podcasts.sqlite`，可通过 `PODCAST_DB_PATH` 覆盖。生产部署应持久化 `data/`。
+
+### `src/searchCache.js`
+
+职责：
+
+- 为关键词数据库搜索提供进程内 TTL 缓存
+- 以标准化后的查询词和 `limit` 作为 key
+- 在节目目录发生写入后由上层主动清空
 
 ### `src/config.js`
 
@@ -130,6 +155,14 @@ flowchart LR
 
 这样公网只暴露 Nginx 80/443，应用容器端口不直接暴露到外网。
 
+容器应挂载：
+
+```text
+../data -> /app/data
+```
+
+这样 SQLite 节目目录不会随着容器重建丢失。
+
 ### `deploy/bootstrap-ubuntu-docker.sh`
 
 用于 Ubuntu 服务器初始化：
@@ -182,7 +215,9 @@ npm run check
 
 - 小宇宙节目页解析
 - 小宇宙单集页解析
-- 搜索结果链接提取
+- SQLite 节目目录 CRUD 和搜索
+- 关键词搜索缓存
+- 管理接口鉴权和 CRUD 路由
 - 查询清洗
 - 公开配置读取
 
@@ -201,6 +236,13 @@ curl -I http://podcastdesk.cn/
 /api/media?url=<encoded media.xyzcdn.net URL>
 ```
 
+管理接口可额外验证：
+
+```text
+/api/admin/podcasts
+/api/admin/podcasts/:id
+```
+
 ## 安全与合规
 
 - 当前服务为 HTTP 临时方案，适合小范围验收，不建议大规模公开推广。
@@ -215,4 +257,4 @@ curl -I http://podcastdesk.cn/
 2. 配置 HTTPS 免费证书和 80 到 443 跳转。
 3. 按播放流量决定是否升级带宽，或改成默认直链播放、代理兜底。
 4. 增加收藏/最近播放等本地浏览器存储功能。
-5. 探索更稳定的节目搜索来源，减少对搜索引擎结果页的依赖。
+5. 用自动化补录流程逐步填充 SQLite 节目目录，降低人工录入成本。
