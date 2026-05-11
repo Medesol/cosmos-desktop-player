@@ -9,9 +9,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5173
+      PODCAST_DB_PATH: /app/data/podcasts.sqlite
+      ADMIN_TOKEN: ""
       PUBLIC_ICP_TEXT: ""
       PUBLIC_ICP_URL: "https://beian.miit.gov.cn/"
       PUBLIC_SECURITY_RECORD_TEXT: ""
       PUBLIC_SECURITY_RECORD_URL: ""
     ports:
       - "127.0.0.1:5173:5173"
+    volumes:
+      - ../data:/app/data
