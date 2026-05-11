@@ -4,7 +4,8 @@ const state = {
   episodes: [],
   filteredEpisodes: [],
   currentIndex: -1,
-  loading: false
+  loading: false,
+  episodesLoading: false
 };
 
 const els = {
@@ -115,7 +116,7 @@ async function search(query) {
     state.results = data.results || [];
     renderResults();
     if (state.results[0]) {
-      selectShow(state.results[0]);
+      await selectShow(state.results[0]);
     } else {
       clearShow();
       showToast("没有找到相关节目。可以换个关键词，或直接粘贴小宇宙节目链接。");
@@ -127,21 +128,51 @@ async function search(query) {
   }
 }
 
-function selectShow(result) {
+async function selectShow(result) {
   state.show = result.podcast;
   state.episodes = result.episodes || [];
   state.currentIndex = -1;
+  state.episodesLoading = false;
   els.episodeFilter.value = "";
   renderResults();
   renderShow();
   renderEpisodes();
+  if (!state.episodes.length && state.show?.id) {
+    await hydrateSelectedShow(result, state.show.id);
+  }
 }
 
 function clearShow() {
   state.show = null;
   state.episodes = [];
+  state.episodesLoading = false;
   renderShow();
   renderEpisodes();
+}
+
+async function hydrateSelectedShow(result, podcastId) {
+  state.episodesLoading = true;
+  renderEpisodes();
+  try {
+    const data = await api(`/api/podcast/${encodeURIComponent(podcastId)}`);
+    if (state.show?.id !== podcastId) return;
+    state.show = { ...state.show, ...(data.podcast || {}) };
+    state.episodes = data.episodes || [];
+    result.podcast = state.show;
+    result.episodes = state.episodes;
+    result.sourceUrl = data.sourceUrl || result.sourceUrl;
+    renderResults();
+    renderShow();
+  } catch (error) {
+    if (state.show?.id === podcastId) {
+      showToast(`单集加载失败：${error.message}`);
+    }
+  } finally {
+    if (state.show?.id === podcastId) {
+      state.episodesLoading = false;
+      renderEpisodes();
+    }
+  }
 }
 
 function renderResults() {
@@ -201,6 +232,14 @@ function renderEpisodes() {
   });
   els.episodeCount.textContent = state.filteredEpisodes.length;
   els.episodes.innerHTML = "";
+
+  if (state.episodesLoading) {
+    const loading = document.createElement("div");
+    loading.className = "episode-empty";
+    loading.textContent = "正在加载单集...";
+    els.episodes.append(loading);
+    return;
+  }
 
   if (!state.filteredEpisodes.length) {
     const empty = document.createElement("div");
