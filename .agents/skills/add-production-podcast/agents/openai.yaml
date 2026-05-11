@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Production Podcast"
+  short_description: "Find a podcast and add it to production"
+  default_prompt: "Use $add-production-podcast to find a Xiaoyuzhou podcast ID and add it to the production database."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy PodcastDesk"
+  short_description: "Deploy PodcastDesk to the Ubuntu Docker server"
+  default_prompt: "Use $deploy-podcastdesk to deploy the latest PodcastDesk main branch to the production server."
